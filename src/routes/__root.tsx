@@ -13,6 +13,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import { Toaster } from "sonner";
+import FarkzaLogo from "/public/logo_farkza.svg?react";
 
 function NotFoundComponent() {
   return (
@@ -58,8 +59,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="fr">
-      <head><HeadContent /></head>
+    <html lang="fr" className="dark">
+      <head>
+        <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: `document.documentElement.classList.add('dark');document.documentElement.style.background='oklch(0.16 0.02 150)';` }} />
+      </head>
       <body>{children}<Scripts /></body>
     </html>
   );
@@ -71,7 +75,7 @@ function Nav() {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/70 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <Link to="/" className="flex items-center gap-2 font-black tracking-tight">
-          <span className="text-2xl text-primary">⚡</span>
+          <img src="/logo_farkza.svg" alt="Farkza" className="h-7 w-auto" />
           <span className="text-lg">MONSTER<span className="text-primary">TIER</span></span>
         </Link>
         <nav className="flex items-center gap-2 text-sm">

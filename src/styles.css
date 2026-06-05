@@ -76,8 +76,15 @@
   --tier-d-foreground: oklch(0.98 0 0);
 }
 
+/* Force dark theme — never white */
+:root, html, html.light, html[data-theme="light"] {
+  color-scheme: dark;
+  background: oklch(0.16 0.02 150);
+}
+
 @layer base {
   * { border-color: var(--color-border); }
+  html { background: oklch(0.16 0.02 150); }
   body {
     background: radial-gradient(ellipse at top, oklch(0.22 0.04 145) 0%, var(--color-background) 60%);
     color: var(--color-foreground);
