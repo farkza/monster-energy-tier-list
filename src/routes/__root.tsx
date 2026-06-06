@@ -3,17 +3,13 @@ import {
   Outlet,
   Link,
   createRootRouteWithContext,
-  HeadContent,
-  Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect } from "react";
 
-import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { supabase } from "../lib/supabase";
 import { Toaster } from "sonner";
-import FarkzaLogo from "/public/logo_farkza.svg?react";
 
 function NotFoundComponent() {
   return (
@@ -42,32 +38,10 @@ function ErrorComponent({ error }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Monster Tier List" },
-      { name: "description", content: "Classe tes Monster Energy préférées et découvre le classement de la communauté." },
-    ],
-    links: [{ rel: "stylesheet", href: appCss }],
-  }),
-  shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
 });
-
-function RootShell({ children }: { children: ReactNode }) {
-  return (
-    <html lang="fr" className="dark">
-      <head>
-        <HeadContent />
-        <script dangerouslySetInnerHTML={{ __html: `document.documentElement.classList.add('dark');document.documentElement.style.background='oklch(0.16 0.02 150)';` }} />
-      </head>
-      <body>{children}<Scripts /></body>
-    </html>
-  );
-}
 
 function Nav() {
   const { user, pseudo } = useAuth();

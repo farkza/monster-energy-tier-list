@@ -6,8 +6,5 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "github": {
-    "enabled": false
-  }
+  ]
 }
