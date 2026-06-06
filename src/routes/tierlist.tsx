@@ -1,11 +1,26 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 import { toast } from "sonner";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../lib/auth";
 import { TIERS, type Tier } from "../lib/tiers";
-import { MonsterCard, PoolZone, TierRow, type Monster } from "../components/tierlist-pieces";
+import {
+  MonsterCard,
+  PoolZone,
+  TierRow,
+  PoolZoneTap,
+  TierRowTap,
+  type Monster,
+} from "../components/tierlist-pieces";
 
 export const Route = createFileRoute("/tierlist")({
   ssr: false,
@@ -14,16 +29,35 @@ export const Route = createFileRoute("/tierlist")({
 
 type Placement = Record<string, Tier | "pool">;
 
+/** Détecte un vrai appareil tactile (mobile/tablette). */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () =>
+      setIsMobile(window.matchMedia("(pointer: coarse)").matches);
+    check();
+    window.matchMedia("(pointer: coarse)").addEventListener("change", check);
+    return () =>
+      window.matchMedia("(pointer: coarse)").removeEventListener("change", check);
+  }, []);
+  return isMobile;
+}
+
 function TierListPage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
   const [monsters, setMonsters] = useState<Monster[]>([]);
   const [placement, setPlacement] = useState<Placement>({});
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);   // drag (desktop)
+  const [selectedId, setSelectedId] = useState<string | null>(null); // tap (mobile)
   const [submitting, setSubmitting] = useState(false);
   const [fetching, setFetching] = useState(true);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
+  );
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/auth" });
@@ -32,7 +66,10 @@ function TierListPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data: ms } = await supabase.from("monsters").select("id, name, image_url").order("name");
+      const { data: ms } = await supabase
+        .from("monsters")
+        .select("id, name, image_url")
+        .order("name");
       const list = (ms ?? []) as Monster[];
       setMonsters(list);
 
@@ -50,7 +87,14 @@ function TierListPage() {
   }, [user]);
 
   const byZone = useMemo(() => {
-    const z: Record<string, Monster[]> = { pool: [], S: [], A: [], B: [], C: [], D: [] };
+    const z: Record<string, Monster[]> = {
+      pool: [],
+      S: [],
+      A: [],
+      B: [],
+      C: [],
+      D: [],
+    };
     for (const m of monsters) {
       const t = placement[m.id] ?? "pool";
       z[t].push(m);
@@ -58,6 +102,7 @@ function TierListPage() {
     return z;
   }, [monsters, placement]);
 
+  // ── Desktop drag handlers ────────────────────────────────────────────────
   const onStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
   const onEnd = (e: DragEndEvent) => {
     setActiveId(null);
@@ -71,17 +116,37 @@ function TierListPage() {
     }
   };
 
+  // ── Mobile tap handlers ──────────────────────────────────────────────────
+  const onTapSelect = (id: string) => {
+    // Re-clic sur la même canette → désélectionne
+    setSelectedId((prev) => (prev === id ? null : id));
+  };
+
+  const onTapPlace = (tier: Tier) => {
+    if (!selectedId) return;
+    setPlacement((p) => ({ ...p, [selectedId]: tier }));
+    setSelectedId(null);
+    toast.success(`Placé en ${tier} !`, { duration: 1200 });
+  };
+
+  // ── Submit ───────────────────────────────────────────────────────────────
   const submit = async () => {
     if (!user) return;
     const rows = monsters
       .filter((m) => placement[m.id] && placement[m.id] !== "pool")
-      .map((m) => ({ user_id: user.id, monster_id: m.id, tier: placement[m.id] as Tier }));
+      .map((m) => ({
+        user_id: user.id,
+        monster_id: m.id,
+        tier: placement[m.id] as Tier,
+      }));
     if (rows.length === 0) {
       toast.error("Classe au moins une canette.");
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.from("votes").upsert(rows, { onConflict: "user_id,monster_id" });
+    const { error } = await supabase
+      .from("votes")
+      .upsert(rows, { onConflict: "user_id,monster_id" });
     setSubmitting(false);
     if (error) return toast.error(error.message);
     toast.success("Classement enregistré !");
@@ -91,7 +156,9 @@ function TierListPage() {
   const activeMonster = monsters.find((m) => m.id === activeId);
 
   if (loading || fetching)
-    return <div className="p-10 text-center text-muted-foreground">Chargement…</div>;
+    return (
+      <div className="p-10 text-center text-muted-foreground">Chargement…</div>
+    );
 
   if (monsters.length === 0)
     return (
@@ -108,7 +175,11 @@ function TierListPage() {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black">Ta tier list</h1>
-          <p className="text-sm text-muted-foreground">Glisse les canettes du bas vers les tiers.</p>
+          <p className="text-sm text-muted-foreground">
+            {isMobile
+              ? "Sélectionne une canette, puis touche la bonne ligne."
+              : "Glisse les canettes du bas vers les tiers."}
+          </p>
         </div>
         <button
           onClick={submit}
@@ -119,21 +190,64 @@ function TierListPage() {
         </button>
       </div>
 
-      <DndContext sensors={sensors} onDragStart={onStart} onDragEnd={onEnd}>
-        <div className="space-y-2">
-          {TIERS.map((t) => (
-            <TierRow key={t} tier={t} monsters={byZone[t]} />
-          ))}
-        </div>
+      {/* ── Bandeau de sélection active (mobile) ── */}
+      {isMobile && selectedId && (() => {
+        const sel = monsters.find((m) => m.id === selectedId);
+        return sel ? (
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-primary bg-primary/10 px-3 py-2">
+            <span className="text-sm font-bold text-primary">
+              {sel.name.replace(/^Monster\s*/i, "")} sélectionnée
+            </span>
+            <span className="text-xs text-muted-foreground">→ touche une ligne pour la placer</span>
+            <button
+              type="button"
+              onClick={() => setSelectedId(null)}
+              className="ml-auto text-xs text-muted-foreground underline"
+            >
+              Annuler
+            </button>
+          </div>
+        ) : null;
+      })()}
 
-        <div className="mt-6">
-          <PoolZone monsters={byZone.pool} />
-        </div>
-
-        <DragOverlay>
-          {activeMonster ? <MonsterCard monster={activeMonster} /> : null}
-        </DragOverlay>
-      </DndContext>
+      {/* ── MOBILE : tap-to-place ── */}
+      {isMobile ? (
+        <>
+          <div className="space-y-2">
+            {TIERS.map((t) => (
+              <TierRowTap
+                key={t}
+                tier={t}
+                monsters={byZone[t]}
+                selectedId={selectedId}
+                onPlace={onTapPlace}
+              />
+            ))}
+          </div>
+          <div className="mt-6">
+            <PoolZoneTap
+              monsters={byZone.pool}
+              selectedId={selectedId}
+              onSelect={onTapSelect}
+            />
+          </div>
+        </>
+      ) : (
+        /* ── DESKTOP : drag-and-drop ── */
+        <DndContext sensors={sensors} onDragStart={onStart} onDragEnd={onEnd}>
+          <div className="space-y-2">
+            {TIERS.map((t) => (
+              <TierRow key={t} tier={t} monsters={byZone[t]} />
+            ))}
+          </div>
+          <div className="mt-6">
+            <PoolZone monsters={byZone.pool} />
+          </div>
+          <DragOverlay>
+            {activeMonster ? <MonsterCard monster={activeMonster} /> : null}
+          </DragOverlay>
+        </DndContext>
+      )}
     </main>
   );
 }
