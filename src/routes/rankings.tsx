@@ -73,7 +73,7 @@ function RankingsPage() {
                       </div>
                     )}
                   </div>
-                  <p className="mt-1 truncate text-[11px] font-semibold">{r.name}</p>
+                  <p className="mt-1 text-[11px] font-semibold leading-tight line-clamp-2">{r.name}</p>
                   <p className="text-[10px] text-muted-foreground">
                     {r.avg_score.toFixed(2)} · {r.vote_count} vote{r.vote_count > 1 ? "s" : ""}
                   </p>
@@ -95,7 +95,7 @@ function RankingsPage() {
                 <div className="h-24 w-20 rounded-lg border border-border bg-card p-1">
                   {r.image_url && <img src={r.image_url} alt={r.name} className="h-full w-full object-contain" />}
                 </div>
-                <p className="mt-1 truncate text-[11px]">{r.name}</p>
+                <p className="mt-1 text-[11px] leading-tight line-clamp-2">{r.name}</p>
               </div>
             ))}
           </div>
