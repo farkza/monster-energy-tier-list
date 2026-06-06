@@ -50,7 +50,7 @@ function TierListPage() {
 
   const [monsters, setMonsters] = useState<Monster[]>([]);
   const [placement, setPlacement] = useState<Placement>({});
-  const [activeId, setActiveId] = useState<string | null>(null);   // drag (desktop)
+  const [activeId, setActiveId] = useState<string | null>(null);    // drag (desktop)
   const [selectedId, setSelectedId] = useState<string | null>(null); // tap (mobile)
   const [submitting, setSubmitting] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -117,17 +117,31 @@ function TierListPage() {
   };
 
   // ── Mobile tap handlers ──────────────────────────────────────────────────
+
+  /** Sélectionne ou désélectionne une canette (pool ou tier). */
   const onTapSelect = (id: string) => {
-    // Re-clic sur la même canette → désélectionne
     setSelectedId((prev) => (prev === id ? null : id));
   };
 
+  /** Place la canette sélectionnée dans un tier. */
   const onTapPlace = (tier: Tier) => {
     if (!selectedId) return;
     setPlacement((p) => ({ ...p, [selectedId]: tier }));
     setSelectedId(null);
     toast.success(`Placé en ${tier} !`, { duration: 1200 });
   };
+
+  /** Remet la canette sélectionnée dans la pool "À classer". */
+  const onReturnToPool = () => {
+    if (!selectedId) return;
+    setPlacement((p) => ({ ...p, [selectedId]: "pool" }));
+    setSelectedId(null);
+    toast.success("Remis dans la pool.", { duration: 1200 });
+  };
+
+  // La canette sélectionnée est-elle dans un tier (pas dans la pool) ?
+  const selectedIsInTier =
+    selectedId !== null && placement[selectedId] !== "pool" && placement[selectedId] !== undefined;
 
   // ── Submit ───────────────────────────────────────────────────────────────
   const submit = async () => {
@@ -198,7 +212,11 @@ function TierListPage() {
             <span className="text-sm font-bold text-primary">
               {sel.name.replace(/^Monster\s*/i, "")} sélectionnée
             </span>
-            <span className="text-xs text-muted-foreground">→ touche une ligne pour la placer</span>
+            <span className="text-xs text-muted-foreground">
+              {selectedIsInTier
+                ? "→ touche une autre ligne ou remets-la dans la pool"
+                : "→ touche une ligne pour la placer"}
+            </span>
             <button
               type="button"
               onClick={() => setSelectedId(null)}
@@ -221,6 +239,7 @@ function TierListPage() {
                 monsters={byZone[t]}
                 selectedId={selectedId}
                 onPlace={onTapPlace}
+                onSelect={onTapSelect}
               />
             ))}
           </div>
@@ -229,6 +248,8 @@ function TierListPage() {
               monsters={byZone.pool}
               selectedId={selectedId}
               onSelect={onTapSelect}
+              canReturnHere={selectedIsInTier}
+              onReturnToPool={onReturnToPool}
             />
           </div>
         </>
